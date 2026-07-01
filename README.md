@@ -1,48 +1,21 @@
-# Vertriebler-Karte mit gemeinsamer Supabase-Datenbank
+# Vertriebler-Karte
 
-Kostenloses GitHub-Pages-Tool mit OpenStreetMap/Leaflet und gemeinsamer Supabase-Datenbank.
+Kostenlose GitHub-Pages-Webseite mit OpenStreetMap + Supabase.
 
-## Dateien
+## Start
+1. Dateien in GitHub hochladen.
+2. GitHub Pages aktivieren: Settings → Pages → Deploy from branch → main → /(root).
+3. In Supabase den SQL-Code aus `setup.sql` ausführen.
+4. Webseite öffnen und oben auf **Supabase verbinden** klicken.
+5. Project URL und Publishable/Anon Key eintragen.
 
-- `index.html` – Website
-- `styles.css` – Design
-- `app.js` – Logik
-- `config.example.js` – Vorlage für deine Supabase-Zugangsdaten
-- `setup.sql` – Datenbank-Tabelle für Supabase
+## Eingabeformat für mehrere Vertriebler
 
-## Schritt 1: Supabase einrichten
-
-1. Bei Supabase ein neues Projekt erstellen.
-2. Im Projekt links auf **SQL Editor** gehen.
-3. Inhalt aus `setup.sql` einfügen.
-4. Auf **Run** klicken.
-
-## Schritt 2: Zugangsdaten eintragen
-
-1. Datei `config.example.js` kopieren oder umbenennen in `config.js`.
-2. In Supabase zu **Project Settings > API** gehen.
-3. `Project URL` in `SUPABASE_URL` eintragen.
-4. `anon public` Key in `SUPABASE_ANON_KEY` eintragen.
-
-Beispiel:
-
-```js
-window.APP_CONFIG = {
-  SUPABASE_URL: 'https://deinprojekt.supabase.co',
-  SUPABASE_ANON_KEY: 'dein-anon-key'
-};
+```text
+Name; PLZ; Ort; Telefon; E-Mail
+Max Mustermann; 50667; Köln; 0221 12345; max@example.de
+Erika Beispiel; 10115; Berlin; 030 12345; erika@example.de
 ```
 
-## Schritt 3: GitHub Pages
-
-1. Neues GitHub-Repository erstellen.
-2. Alle Dateien hochladen, auch die neue `config.js`.
-3. Repository > **Settings > Pages**.
-4. Branch `main`, Ordner `/root` auswählen.
-5. Speichern.
-
-## Wichtig
-
-- Die Karte funktioniert nur mit Internet, weil Leaflet und OpenStreetMap-Kacheln online geladen werden.
-- Wenn die Karte weiß/grau bleibt, einmal Browser-Cache leeren oder hart neu laden: Windows `Strg + F5`, Mac `Cmd + Shift + R`.
-- Aktuell kann jeder mit Link Daten sehen, hinzufügen und löschen. Für echten Betrieb sollte später ein Admin-Schutz ergänzt werden.
+## Hinweis
+Die Fahrzeit ist eine grobe Schätzung auf Basis der Luftlinien-Entfernung. Für echte Fahrzeiten per Straße wäre später ein Routing-Dienst nötig.

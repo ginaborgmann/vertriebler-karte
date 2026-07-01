@@ -1,29 +1,21 @@
--- In Supabase im SQL Editor ausführen.
-create table if not exists public.sales_people (
-  id uuid primary key default gen_random_uuid(),
+create table if not exists vertriebler (
+  id bigint generated always as identity primary key,
   name text not null,
-  contact text,
-  zip text not null,
-  city text,
-  lat double precision not null,
-  lon double precision not null,
-  created_at timestamptz not null default now()
+  plz text not null,
+  ort text,
+  telefon text,
+  email text,
+  lat double precision,
+  lon double precision,
+  created_at timestamp with time zone default now()
 );
 
-alter table public.sales_people enable row level security;
+alter table vertriebler enable row level security;
 
--- Öffentlich lesbar, damit alle über den Link dieselben Vertriebler sehen.
-create policy "sales_people_select_public"
-  on public.sales_people for select
-  using (true);
+drop policy if exists "public read" on vertriebler;
+drop policy if exists "public insert" on vertriebler;
+drop policy if exists "public delete" on vertriebler;
 
--- Öffentlich einfügbar, damit Vertriebler über die Website angelegt werden können.
-create policy "sales_people_insert_public"
-  on public.sales_people for insert
-  with check (true);
-
--- Öffentlich löschbar, damit der Löschen-Button funktioniert.
--- Für produktive Nutzung besser durch Login/Admin ersetzen.
-create policy "sales_people_delete_public"
-  on public.sales_people for delete
-  using (true);
+create policy "public read" on vertriebler for select using (true);
+create policy "public insert" on vertriebler for insert with check (true);
+create policy "public delete" on vertriebler for delete using (true);

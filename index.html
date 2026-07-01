@@ -4,70 +4,57 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vertriebler-Karte</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header>
+  <header class="topbar">
     <div>
       <h1>Vertriebler-Karte</h1>
-      <p>Gemeinsame Online-Datenbank: PLZ eingeben, nächsten Berater finden, Entfernung sehen.</p>
+      <p>PLZ eingeben und nächstgelegenen Berater finden.</p>
     </div>
-    <div class="header-actions">
-      <span id="syncStatus" class="status">Starte…</span>
-      <button id="refreshBtn" type="button">Neu laden</button>
-      <button id="exportBtn" type="button">Daten exportieren</button>
-    </div>
+    <button id="settingsBtn" type="button">Supabase verbinden</button>
   </header>
 
-  <main>
-    <section id="setupWarning" class="panel warning" hidden>
-      <strong>Supabase noch nicht eingerichtet.</strong>
-      Benenne <code>config.example.js</code> in <code>config.js</code> um und trage dort <code>SUPABASE_URL</code> und <code>SUPABASE_ANON_KEY</code> ein.
+  <main class="layout">
+    <section class="panel">
+      <h2>Suche</h2>
+      <div class="row">
+        <input id="searchZip" placeholder="PLZ eingeben, z. B. 50667" />
+        <button id="searchBtn">Suchen</button>
+      </div>
+      <div id="nearestResult" class="result empty">Noch keine Suche gestartet.</div>
+
+      <h2>Vertriebler hinzufügen</h2>
+      <p class="hint">Mehrere Zeilen eintragen und dann gemeinsam speichern.</p>
+      <textarea id="bulkInput" rows="8" placeholder="Name; PLZ; Ort; Telefon; E-Mail&#10;Max Mustermann; 50667; Köln; 0221 12345; max@example.de"></textarea>
+      <button id="saveBulkBtn" class="wide">Alle speichern</button>
+      <p id="status" class="status"></p>
+
+      <h2>Vertriebler</h2>
+      <div id="advisorList" class="advisor-list"></div>
     </section>
 
-    <section id="mapWarning" class="panel warning" hidden></section>
-
-    <section class="panel search-panel">
-      <h2>Berater in der Nähe suchen</h2>
-      <form id="searchForm" class="grid-form">
-        <label>Postleitzahl<input id="searchZip" name="zip" placeholder="z. B. 50667" inputmode="numeric" required /></label>
-        <label>Umkreis in km<input id="radiusKm" name="radius" type="number" value="50" min="1" max="500" required /></label>
-        <button type="submit">Suchen</button>
-      </form>
-      <div id="nearestResult" class="result"></div>
-    </section>
-
-    <section class="layout">
-      <aside class="panel">
-        <h2>Vertriebler anlegen</h2>
-        <form id="singleForm" class="stack">
-          <input name="name" placeholder="Name" required />
-          <input name="contact" placeholder="E-Mail oder Telefon" />
-          <input name="zip" placeholder="PLZ" inputmode="numeric" required />
-          <input name="city" placeholder="Ort optional" />
-          <button type="submit">Einzeln speichern</button>
-        </form>
-        <hr />
-        <h3>Mehrere gleichzeitig hinzufügen</h3>
-        <p class="hint">Eine Zeile pro Vertriebler: Name;Kontakt;PLZ;Ort</p>
-        <textarea id="batchInput" rows="8" placeholder="Max Mustermann;max@example.de;50667;Köln&#10;Erika Beispiel;0170 123456;40213;Düsseldorf"></textarea>
-        <button id="batchBtn" type="button">Alle gemeinsam speichern</button>
-        <button id="clearBtn" type="button" class="danger">Alle Online-Daten löschen</button>
-      </aside>
-
-      <section class="map-wrap"><div id="map"></div></section>
-
-      <aside class="panel">
-        <h2>Gespeicherte Vertriebler</h2>
-        <div id="salesList" class="sales-list"></div>
-      </aside>
+    <section class="map-wrap">
+      <div id="map"></div>
     </section>
   </main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
+  <dialog id="settingsDialog">
+    <form method="dialog" class="settings">
+      <h2>Supabase verbinden</h2>
+      <p class="hint">Trage Project URL und Publishable/Anon Key ein. Wird nur im Browser gespeichert.</p>
+      <label>Project URL<input id="supabaseUrl" placeholder="https://...supabase.co" /></label>
+      <label>Publishable / anon key<textarea id="supabaseKey" rows="4"></textarea></label>
+      <div class="actions">
+        <button id="saveSettingsBtn" type="button">Speichern</button>
+        <button type="submit">Schließen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
