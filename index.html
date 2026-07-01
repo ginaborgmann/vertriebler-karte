@@ -4,66 +4,49 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vertriebler-Karte</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQipp5p7KCkE8X6MkLaK5pN9aQZVdrk=" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQAgN0h4kGLo5Uh2Prh7Oy6E3tBKDg=" crossorigin="" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header>
     <h1>Vertriebler-Karte</h1>
-    <button id="settingsBtn" type="button">Supabase verbinden</button>
+    <p>PLZ eingeben und den nächstgelegenen Vertriebler finden.</p>
   </header>
 
   <main>
-    <section class="panel">
-      <h2>PLZ-Suche</h2>
+    <section class="card search-card">
+      <h2>Suche</h2>
       <div class="row">
-        <input id="searchZip" placeholder="PLZ eingeben, z. B. 50667" />
-        <button id="searchBtn" type="button">Suchen</button>
+        <input id="searchPlz" inputmode="numeric" maxlength="5" placeholder="Postleitzahl eingeben, z. B. 50667" />
+        <button id="searchBtn">Nächsten finden</button>
       </div>
-      <div id="nearestBox" class="result">Noch keine Suche gestartet.</div>
+      <div id="result" class="result muted">Noch keine Suche gestartet.</div>
     </section>
 
-    <section class="panel admin">
-      <h2>Vertriebler hinzufügen</h2>
-      <p class="hint">Mehrere Zeilen möglich. Format: Name; PLZ; Ort; Telefon; E-Mail</p>
-      <textarea id="batchInput" rows="6" placeholder="Max Mustermann; 50667; Köln; 0221 123456; max@example.de&#10;Erika Beispiel; 40213; Düsseldorf; 0211 55555; erika@example.de"></textarea>
-      <div class="row">
-        <button id="addBatchBtn" type="button">Alle hinzufügen</button>
-        <button id="reloadBtn" type="button">Neu laden</button>
-      </div>
-      <div id="status" class="status"></div>
-    </section>
-
-    <section class="mapWrap">
+    <section class="map-card">
       <div id="map"></div>
     </section>
 
-    <section class="panel">
-      <h2>Berater</h2>
-      <div id="beraterList" class="beraterList"></div>
+    <section class="card">
+      <h2>Vertriebler importieren</h2>
+      <p class="muted">Aus Excel/Sheets einfach zwei Spalten kopieren: <b>Name</b> und <b>PLZ</b>. Dann hier einfügen.</p>
+      <textarea id="bulkInput" rows="8" placeholder="Max Mustermann    48143&#10;Anna Müller       50667&#10;Peter Schulz      80331"></textarea>
+      <div class="row actions">
+        <button id="importBtn">Alle speichern</button>
+        <button id="reloadBtn" class="secondary">Neu laden</button>
+      </div>
+      <p id="status" class="muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Gespeicherte Vertriebler</h2>
+      <div id="advisorList" class="list"></div>
     </section>
   </main>
 
-  <dialog id="settingsDialog">
-    <form method="dialog" class="dialogForm">
-      <h2>Supabase verbinden</h2>
-      <p class="hint">Trage hier deine Project URL und den Publishable Key ein. Der Secret Key darf hier niemals rein.</p>
-      <label>Project URL
-        <input id="supabaseUrl" placeholder="https://xxxxx.supabase.co" />
-      </label>
-      <label>Publishable Key / anon public key
-        <textarea id="supabaseKey" rows="4" placeholder="eyJ...pub..."></textarea>
-      </label>
-      <div class="row end">
-        <button id="clearConfigBtn" type="button">Löschen</button>
-        <button value="cancel">Abbrechen</button>
-        <button id="saveConfigBtn" value="default">Speichern</button>
-      </div>
-    </form>
-  </dialog>
-
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,168 +1,175 @@
-const STORAGE_URL = 'vertriebler_supabase_url';
-const STORAGE_KEY = 'vertriebler_supabase_key';
-const TABLE = 'vertriebler';
-
-let map, supabaseClient;
+const avgKmPerMinute = 0.8; // einfache Fahrzeit-Schätzung: 48 km/h
+let supabaseClient;
 let advisors = [];
+let map;
 let markers = [];
 let searchMarker = null;
-let nearestMarker = null;
+let nearestLine = null;
 
 const $ = (id) => document.getElementById(id);
 
-function setStatus(text, isError = false) {
-  $('status').textContent = text || '';
-  $('status').style.color = isError ? '#b91c1c' : '#065f46';
+function setStatus(message, type = "muted") {
+  const el = $("status");
+  el.className = type;
+  el.textContent = message;
 }
 
-function initMap() {
-  map = L.map('map').setView([51.1657, 10.4515], 6);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap-Mitwirkende'
-  }).addTo(map);
+function cleanPlz(value) {
+  const match = String(value || "").match(/\b\d{5}\b/);
+  return match ? match[0] : "";
 }
 
-function loadConfig() {
-  const url = localStorage.getItem(STORAGE_URL) || '';
-  const key = localStorage.getItem(STORAGE_KEY) || '';
-  $('supabaseUrl').value = url;
-  $('supabaseKey').value = key;
-  if (!url || !key) {
-    setStatus('Bitte zuerst Supabase verbinden.', true);
-    return false;
-  }
-  supabaseClient = window.supabase.createClient(url, key);
-  return true;
+function parseRows(text) {
+  return text.split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const parts = line.split(/\t|;|,/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) return { name: parts[0], plz: cleanPlz(parts[1]) };
+      const plz = cleanPlz(line);
+      const name = line.replace(plz, "").trim();
+      return { name, plz };
+    })
+    .filter(row => row.name && row.plz);
 }
 
-async function geocode(query) {
-  const cacheKey = 'geo_' + query.trim().toLowerCase();
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) return JSON.parse(cached);
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=de&q=${encodeURIComponent(query)}`;
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
-  const data = await res.json();
-  if (!data.length) throw new Error('Adresse/PLZ nicht gefunden: ' + query);
-  const point = { lat: Number(data[0].lat), lon: Number(data[0].lon), label: data[0].display_name };
-  localStorage.setItem(cacheKey, JSON.stringify(point));
-  return point;
+async function geocodePlz(plz) {
+  const response = await fetch(`https://api.zippopotam.us/de/${plz}`);
+  if (!response.ok) throw new Error(`PLZ ${plz} wurde nicht gefunden.`);
+  const data = await response.json();
+  const place = data.places?.[0];
+  if (!place) throw new Error(`PLZ ${plz} wurde nicht gefunden.`);
+  return { lat: Number(place.latitude), lon: Number(place.longitude), place: place["place name"] };
 }
 
-function distanceKm(aLat, aLon, bLat, bLon) {
+function distanceKm(a, b) {
   const R = 6371;
-  const dLat = (bLat - aLat) * Math.PI / 180;
-  const dLon = (bLon - aLon) * Math.PI / 180;
-  const lat1 = aLat * Math.PI / 180;
-  const lat2 = bLat * Math.PI / 180;
-  const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLon = (b.lon - a.lon) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2)**2;
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
 }
 
-function minutesEstimate(km) {
-  return Math.max(3, Math.round((km / 55) * 60));
+function ensureConfig() {
+  if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY.includes("HIER_")) {
+    throw new Error("Bitte zuerst in config.js den Supabase Publishable Key eintragen.");
+  }
+}
+
+function initMap() {
+  map = L.map("map").setView([51.1657, 10.4515], 6);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+}
+
+function renderMarkers(highlightId = null) {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  advisors.forEach(a => {
+    const marker = L.marker([a.lat, a.lon]).addTo(map);
+    marker.bindPopup(`<b>${escapeHtml(a.name)}</b><br>PLZ ${escapeHtml(a.plz)}`);
+    markers.push(marker);
+    if (a.id === highlightId) marker.openPopup();
+  });
+  if (markers.length) {
+    const group = L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.25));
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s]));
+}
+
+function renderList() {
+  const list = $("advisorList");
+  if (!advisors.length) {
+    list.innerHTML = `<p class="muted">Noch keine Vertriebler gespeichert.</p>`;
+    return;
+  }
+  list.innerHTML = advisors.map(a => `
+    <div class="item">
+      <div><b>${escapeHtml(a.name)}</b><span>PLZ ${escapeHtml(a.plz)}</span></div>
+      <button class="danger" onclick="deleteAdvisor(${a.id})">Löschen</button>
+    </div>
+  `).join("");
 }
 
 async function loadAdvisors() {
-  if (!supabaseClient && !loadConfig()) return;
-  setStatus('Lade Berater...');
-  const { data, error } = await supabaseClient.from(TABLE).select('*').order('name');
-  if (error) { setStatus('Fehler beim Laden: ' + error.message, true); return; }
+  const { data, error } = await supabaseClient.from("vertriebler").select("*").order("name");
+  if (error) throw error;
   advisors = data || [];
-  renderAdvisors();
+  renderList();
   renderMarkers();
-  setStatus(`${advisors.length} Berater geladen.`);
 }
 
-function renderMarkers() {
-  markers.forEach(m => m.remove());
-  markers = [];
-  advisors.forEach(a => {
-    if (a.breitengrad && a.laengengrad) {
-      const m = L.marker([a.breitengrad, a.laengengrad]).addTo(map);
-      m.bindPopup(`<strong>${escapeHtml(a.name)}</strong><br>${escapeHtml(a.plz || '')} ${escapeHtml(a.ort || '')}<br>${escapeHtml(a.telefon || '')}<br>${escapeHtml(a.email || '')}`);
-      markers.push(m);
+async function importAdvisors() {
+  try {
+    const rows = parseRows($("bulkInput").value);
+    if (!rows.length) return setStatus("Bitte Namen und PLZ einfügen.", "error");
+    setStatus(`Verarbeite ${rows.length} Einträge...`);
+    const prepared = [];
+    for (const row of rows) {
+      const geo = await geocodePlz(row.plz);
+      prepared.push({ name: row.name, plz: row.plz, lat: geo.lat, lon: geo.lon });
     }
-  });
-}
-
-function renderAdvisors() {
-  const box = $('beraterList');
-  box.innerHTML = '';
-  if (!advisors.length) { box.textContent = 'Noch keine Berater eingetragen.'; return; }
-  advisors.forEach(a => {
-    const div = document.createElement('div');
-    div.className = 'card';
-    div.innerHTML = `<strong>${escapeHtml(a.name)}</strong>${escapeHtml(a.plz || '')} ${escapeHtml(a.ort || '')}<br>${escapeHtml(a.telefon || '')}<br>${escapeHtml(a.email || '')}<br>`;
-    const del = document.createElement('button');
-    del.textContent = 'Löschen';
-    del.onclick = () => deleteAdvisor(a.id);
-    div.appendChild(del);
-    box.appendChild(div);
-  });
-}
-
-async function addBatch() {
-  if (!supabaseClient && !loadConfig()) return;
-  const lines = $('batchInput').value.split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return setStatus('Bitte mindestens eine Zeile eintragen.', true);
-  setStatus('Geokodiere und speichere...');
-  const rows = [];
-  for (const line of lines) {
-    const [name, plz, ort = '', telefon = '', email = ''] = line.split(';').map(x => x.trim());
-    if (!name || !plz) { setStatus('Jede Zeile braucht mindestens Name und PLZ.', true); return; }
-    const geo = await geocode(`${plz} ${ort} Deutschland`);
-    rows.push({ name, plz, ort, telefon, email, breitengrad: geo.lat, laengengrad: geo.lon });
-    await new Promise(r => setTimeout(r, 350));
+    const { error } = await supabaseClient.from("vertriebler").insert(prepared);
+    if (error) throw error;
+    $("bulkInput").value = "";
+    setStatus(`${prepared.length} Vertriebler gespeichert.`, "success");
+    await loadAdvisors();
+  } catch (err) {
+    setStatus(err.message || String(err), "error");
   }
-  const { error } = await supabaseClient.from(TABLE).insert(rows);
-  if (error) return setStatus('Fehler beim Speichern: ' + error.message, true);
-  $('batchInput').value = '';
-  await loadAdvisors();
-  setStatus(`${rows.length} Berater gespeichert.`);
-}
-
-async function deleteAdvisor(id) {
-  if (!confirm('Diesen Berater wirklich löschen?')) return;
-  const { error } = await supabaseClient.from(TABLE).delete().eq('id', id);
-  if (error) return setStatus('Fehler beim Löschen: ' + error.message, true);
-  await loadAdvisors();
 }
 
 async function searchNearest() {
-  const zip = $('searchZip').value.trim();
-  if (!zip) return;
-  if (!advisors.length) return $('nearestBox').textContent = 'Noch keine Berater vorhanden.';
-  const origin = await geocode(`${zip} Deutschland`);
-  if (searchMarker) searchMarker.remove();
-  searchMarker = L.circleMarker([origin.lat, origin.lon], { radius: 9 }).addTo(map).bindPopup('Such-PLZ: ' + zip);
-  const withDistance = advisors.filter(a => a.breitengrad && a.laengengrad).map(a => {
-    const km = distanceKm(origin.lat, origin.lon, a.breitengrad, a.laengengrad);
-    return { ...a, km, minutes: minutesEstimate(km) };
-  }).sort((a,b) => a.km - b.km);
-  const n = withDistance[0];
-  if (!n) return $('nearestBox').textContent = 'Keine Berater mit Koordinaten gefunden.';
-  $('nearestBox').innerHTML = `<strong>Nächstgelegener Berater:</strong><br>${escapeHtml(n.name)}<br>${escapeHtml(n.plz)} ${escapeHtml(n.ort || '')}<br><strong>${n.km.toFixed(1)} km</strong> entfernt<br>ca. <strong>${n.minutes} Minuten</strong> Fahrzeit`;
-  if (nearestMarker) nearestMarker.remove();
-  nearestMarker = L.marker([n.breitengrad, n.laengengrad]).addTo(map).bindPopup(`Nächster Berater: ${escapeHtml(n.name)}<br>${n.km.toFixed(1)} km / ca. ${n.minutes} Min.`).openPopup();
-  map.fitBounds([[origin.lat, origin.lon], [n.breitengrad, n.laengengrad]], { padding: [40, 40] });
+  try {
+    if (!advisors.length) return $("result").innerHTML = `<span class="error">Noch keine Vertriebler gespeichert.</span>`;
+    const plz = cleanPlz($("searchPlz").value);
+    if (!plz) return $("result").innerHTML = `<span class="error">Bitte eine gültige 5-stellige PLZ eingeben.</span>`;
+    const start = await geocodePlz(plz);
+    const ranked = advisors.map(a => ({ ...a, km: distanceKm(start, a) })).sort((a,b) => a.km - b.km);
+    const best = ranked[0];
+    const minutes = Math.max(1, Math.round(best.km / avgKmPerMinute));
+    $("result").innerHTML = `<strong>${escapeHtml(best.name)}</strong>ist am nächsten: <b>${best.km.toFixed(1)} km</b> entfernt, ca. <b>${minutes} Minuten</b> Fahrzeit.`;
+
+    if (searchMarker) map.removeLayer(searchMarker);
+    if (nearestLine) map.removeLayer(nearestLine);
+    searchMarker = L.marker([start.lat, start.lon]).addTo(map).bindPopup(`Such-PLZ ${plz}`).openPopup();
+    nearestLine = L.polyline([[start.lat, start.lon], [best.lat, best.lon]], { weight: 4 }).addTo(map);
+    renderMarkers(best.id);
+    map.fitBounds(L.featureGroup([searchMarker, nearestLine]).getBounds().pad(0.3));
+  } catch (err) {
+    $("result").innerHTML = `<span class="error">${escapeHtml(err.message || String(err))}</span>`;
+  }
 }
 
-function escapeHtml(s) { return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+async function deleteAdvisor(id) {
+  if (!confirm("Diesen Vertriebler wirklich löschen?")) return;
+  const { error } = await supabaseClient.from("vertriebler").delete().eq("id", id);
+  if (error) return alert(error.message);
+  await loadAdvisors();
+}
+window.deleteAdvisor = deleteAdvisor;
 
-window.addEventListener('load', () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initMap();
-  loadConfig();
-  loadAdvisors();
-  $('settingsBtn').onclick = () => $('settingsDialog').showModal();
-  $('saveConfigBtn').onclick = () => {
-    localStorage.setItem(STORAGE_URL, $('supabaseUrl').value.trim());
-    localStorage.setItem(STORAGE_KEY, $('supabaseKey').value.trim());
-    setTimeout(() => { loadConfig(); loadAdvisors(); }, 50);
-  };
-  $('clearConfigBtn').onclick = () => { localStorage.removeItem(STORAGE_URL); localStorage.removeItem(STORAGE_KEY); location.reload(); };
-  $('addBatchBtn').onclick = addBatch;
-  $('reloadBtn').onclick = loadAdvisors;
-  $('searchBtn').onclick = searchNearest;
-  $('searchZip').addEventListener('keydown', e => { if (e.key === 'Enter') searchNearest(); });
+  try {
+    ensureConfig();
+    supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    $("importBtn").addEventListener("click", importAdvisors);
+    $("reloadBtn").addEventListener("click", loadAdvisors);
+    $("searchBtn").addEventListener("click", searchNearest);
+    $("searchPlz").addEventListener("keydown", e => { if (e.key === "Enter") searchNearest(); });
+    await loadAdvisors();
+    setStatus("Bereit.");
+  } catch (err) {
+    setStatus(err.message || String(err), "error");
+    $("result").innerHTML = `<span class="error">${escapeHtml(err.message || String(err))}</span>`;
+  }
 });

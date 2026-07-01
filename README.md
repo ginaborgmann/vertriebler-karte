@@ -1,32 +1,31 @@
-# Vertriebler-Karte
+# Vertriebler-Karte einfach
 
-Kostenlose Web-App für GitHub Pages + Supabase.
-
-## Funktionen
+Funktionen:
+- Nur Name + PLZ
+- Excel/Google-Sheets Import mit 2 Spalten: Name und PLZ
+- Gemeinsame Daten über Supabase
+- PLZ-Suche: nächster Vertriebler mit km und geschätzten Minuten
 - OpenStreetMap-Karte
-- gemeinsame Supabase-Datenbank
-- mehrere Vertriebler gleichzeitig eintragen
-- PLZ-Suche
-- nächstgelegener Berater
-- Entfernung in km
-- grob geschätzte Fahrzeit in Minuten
+
+## Dateien
+- `index.html`
+- `app.js`
+- `styles.css`
+- `config.js`
+- `setup.sql`
 
 ## Supabase
-Die Tabelle wurde bei dir bereits mit `setup.sql` angelegt. Falls nicht: Inhalt von `setup.sql` im Supabase SQL Editor ausführen.
+Du hast die Tabelle bereits erstellt. Falls nicht, den Inhalt aus `setup.sql` im Supabase SQL Editor ausführen.
+
+## config.js
+In `config.js` musst du nur den Publishable Key eintragen:
+
+```js
+window.SUPABASE_URL = "https://gaoihgqhnoooljlfhxgw.supabase.co";
+window.SUPABASE_ANON_KEY = "DEIN_PUBLISHABLE_KEY";
+```
+
+Nicht den Secret Key verwenden.
 
 ## GitHub Pages
-Alle Dateien in ein GitHub Repository hochladen und GitHub Pages auf `main` und `/root` stellen.
-
-## Verbinden
-Website öffnen → oben auf „Supabase verbinden“ klicken → Project URL und Publishable Key eintragen.
-
-Wichtig: Niemals den Secret Key verwenden.
-
-## Eingabeformat für Berater
-Eine Zeile pro Berater:
-
-Name; PLZ; Ort; Telefon; E-Mail
-
-Beispiel:
-
-Max Mustermann; 50667; Köln; 0221 123456; max@example.de
+Alle Dateien in das Repository hochladen und GitHub Pages auf `main` / `/root` stellen.
