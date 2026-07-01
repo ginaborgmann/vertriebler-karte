@@ -117,10 +117,17 @@ async function searchNearest(){
   const withGeo = people.filter(p=>p.lat && p.lon);
   if(!withGeo.length){ $('result').textContent='Keine Vertriebler mit Koordinaten gespeichert.'; return; }
   const ranked = withGeo.map(p=>({p, km: distanceKm(pos,{lat:p.lat,lon:p.lon})})).sort((a,b)=>a.km-b.km);
-  const best = ranked[0];
-  const km = Math.round(best.km*10)/10;
-  const min = minutesEstimate(km);
-  $('result').innerHTML = `<b>Nächster Vertriebler:</b> ${escapeHtml(best.p.name)}<br>PLZ: ${escapeHtml(best.p.plz)}<br>Entfernung: <b>${km} km</b><br>Geschätzte Fahrzeit: <b>${min} Minuten</b>`;
+ const top5 = ranked.slice(0, 5);
+
+$('result').innerHTML =
+  `<b>Die nächsten Vertriebler:</b><br>` +
+  top5.map((item, index) => {
+    const km = Math.round(item.km * 10) / 10;
+    const min = minutesEstimate(km);
+    return `${index + 1}. <b>${escapeHtml(item.p.name)}</b> – PLZ ${escapeHtml(item.p.plz)} – <b>${km} km</b> – ca. <b>${min} Min.</b>`;
+  }).join('<br>');
+
+const best = top5[0];
   L.marker([pos.lat,pos.lon]).addTo(map).bindPopup('Gesuchte PLZ '+plz).openPopup();
   map.setView([best.p.lat,best.p.lon], 10);
   renderMarkers(best.p.id);
