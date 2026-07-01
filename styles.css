@@ -1,29 +1,26 @@
-:root { font-family: Arial, sans-serif; color: #172033; background: #f3f6fb; }
-* { box-sizing: border-box; }
+:root { font-family: Arial, sans-serif; color: #1f2937; background: #f3f4f6; }
 body { margin: 0; }
-.topbar { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: white; border-bottom: 1px solid #dbe2ee; gap: 16px; }
-h1 { margin: 0 0 4px; font-size: 24px; }
-p { margin: 0; }
-button { border: 0; background: #1457d9; color: white; padding: 11px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; background: #111827; color: white; }
+h1 { font-size: 22px; margin: 0; }
+button { border: 0; border-radius: 10px; padding: 10px 14px; background: #2563eb; color: white; font-weight: 700; cursor: pointer; }
 button:hover { filter: brightness(.95); }
-.layout { display: grid; grid-template-columns: 430px 1fr; min-height: calc(100vh - 82px); }
-.panel { padding: 18px; overflow: auto; background: #fff; border-right: 1px solid #dbe2ee; }
-.map-wrap { min-height: 600px; }
-#map { height: 100%; min-height: calc(100vh - 82px); }
-h2 { font-size: 18px; margin: 20px 0 10px; }
-.row { display: flex; gap: 8px; }
-input, textarea { width: 100%; border: 1px solid #c9d3e3; border-radius: 10px; padding: 11px; font: inherit; }
-textarea { resize: vertical; }
-.wide { width: 100%; margin-top: 8px; }
-.hint { color: #69758a; font-size: 14px; margin-bottom: 8px; }
-.result { background: #eef5ff; border: 1px solid #cfe1ff; padding: 12px; border-radius: 12px; margin-top: 10px; line-height: 1.45; }
-.empty { color: #69758a; background: #f5f7fb; border-color: #e2e7f0; }
-.status { margin-top: 8px; color: #285c2d; }
-.advisor-card { border: 1px solid #e0e6ef; border-radius: 12px; padding: 10px; margin: 8px 0; background: #fbfcff; }
-.advisor-card strong { display: block; }
-.advisor-card button { margin-top: 8px; background: #8d1d1d; padding: 8px 10px; }
-dialog { border: 0; border-radius: 14px; width: min(560px, 92vw); box-shadow: 0 20px 60px rgba(0,0,0,.2); }
-.settings label { display: block; margin: 12px 0; font-weight: 700; }
-.settings input, .settings textarea { margin-top: 6px; font-weight: 400; }
-.actions { display: flex; gap: 8px; justify-content: flex-end; }
-@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .panel { border-right: 0; } #map { min-height: 420px; } .topbar { align-items: flex-start; flex-direction: column; } }
+input, textarea { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 10px; padding: 11px; font: inherit; }
+main { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; }
+.panel { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+.panel h2 { margin-top: 0; font-size: 18px; }
+.admin { grid-row: span 2; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row.end { justify-content: flex-end; }
+.hint { color: #6b7280; font-size: 14px; }
+.mapWrap { background: white; border-radius: 16px; padding: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.08); min-height: 520px; }
+#map { height: 520px; border-radius: 12px; }
+.result { margin-top: 12px; padding: 12px; background: #eef2ff; border-radius: 12px; line-height: 1.45; }
+.status { margin-top: 10px; color: #065f46; font-weight: 700; }
+.beraterList { display: grid; gap: 10px; }
+.card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fff; }
+.card strong { display: block; margin-bottom: 4px; }
+.card button { margin-top: 8px; background: #dc2626; padding: 8px 10px; }
+dialog { border: 0; border-radius: 16px; max-width: 560px; width: calc(100% - 32px); }
+.dialogForm { display: grid; gap: 12px; }
+label { display: grid; gap: 6px; font-weight: 700; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } #map, .mapWrap { min-height: 420px; height: 420px; } header { align-items: flex-start; flex-direction: column; } .row { flex-direction: column; align-items: stretch; } }

@@ -1,21 +1,32 @@
 # Vertriebler-Karte
 
-Kostenlose GitHub-Pages-Webseite mit OpenStreetMap + Supabase.
+Kostenlose Web-App für GitHub Pages + Supabase.
 
-## Start
-1. Dateien in GitHub hochladen.
-2. GitHub Pages aktivieren: Settings → Pages → Deploy from branch → main → /(root).
-3. In Supabase den SQL-Code aus `setup.sql` ausführen.
-4. Webseite öffnen und oben auf **Supabase verbinden** klicken.
-5. Project URL und Publishable/Anon Key eintragen.
+## Funktionen
+- OpenStreetMap-Karte
+- gemeinsame Supabase-Datenbank
+- mehrere Vertriebler gleichzeitig eintragen
+- PLZ-Suche
+- nächstgelegener Berater
+- Entfernung in km
+- grob geschätzte Fahrzeit in Minuten
 
-## Eingabeformat für mehrere Vertriebler
+## Supabase
+Die Tabelle wurde bei dir bereits mit `setup.sql` angelegt. Falls nicht: Inhalt von `setup.sql` im Supabase SQL Editor ausführen.
 
-```text
+## GitHub Pages
+Alle Dateien in ein GitHub Repository hochladen und GitHub Pages auf `main` und `/root` stellen.
+
+## Verbinden
+Website öffnen → oben auf „Supabase verbinden“ klicken → Project URL und Publishable Key eintragen.
+
+Wichtig: Niemals den Secret Key verwenden.
+
+## Eingabeformat für Berater
+Eine Zeile pro Berater:
+
 Name; PLZ; Ort; Telefon; E-Mail
-Max Mustermann; 50667; Köln; 0221 12345; max@example.de
-Erika Beispiel; 10115; Berlin; 030 12345; erika@example.de
-```
 
-## Hinweis
-Die Fahrzeit ist eine grobe Schätzung auf Basis der Luftlinien-Entfernung. Für echte Fahrzeiten per Straße wäre später ein Routing-Dienst nötig.
+Beispiel:
+
+Max Mustermann; 50667; Köln; 0221 123456; max@example.de

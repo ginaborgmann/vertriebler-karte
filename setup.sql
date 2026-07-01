@@ -5,17 +5,19 @@ create table if not exists vertriebler (
   ort text,
   telefon text,
   email text,
-  lat double precision,
-  lon double precision,
-  created_at timestamp with time zone default now()
+  breitengrad double precision,
+  laengengrad double precision,
+  erstellt_am timestamp with time zone default now()
 );
 
 alter table vertriebler enable row level security;
 
-drop policy if exists "public read" on vertriebler;
-drop policy if exists "public insert" on vertriebler;
-drop policy if exists "public delete" on vertriebler;
+drop policy if exists "Jeder darf lesen" on vertriebler;
+drop policy if exists "Jeder darf einfügen" on vertriebler;
+drop policy if exists "Jeder darf ändern" on vertriebler;
+drop policy if exists "Jeder darf löschen" on vertriebler;
 
-create policy "public read" on vertriebler for select using (true);
-create policy "public insert" on vertriebler for insert with check (true);
-create policy "public delete" on vertriebler for delete using (true);
+create policy "Jeder darf lesen" on vertriebler for select using (true);
+create policy "Jeder darf einfügen" on vertriebler for insert with check (true);
+create policy "Jeder darf ändern" on vertriebler for update using (true);
+create policy "Jeder darf löschen" on vertriebler for delete using (true);
