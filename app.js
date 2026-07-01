@@ -45,14 +45,21 @@ async function geocodePlz(plz){
   return pos;
 }
 
-function distanceKm(a,b){
-  const R=6371;
-  const dLat=(b.lat-a.lat)*Math.PI/180;
-  const dLon=(b.lon-a.lon)*Math.PI/180;
-  const lat1=a.lat*Math.PI/180;
-  const lat2=b.lat*Math.PI/180;
-  const x=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+async function routeInfo(a, b) {
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (!data.routes || !data.routes.length) {
+    throw new Error("Route konnte nicht berechnet werden.");
+  }
+
+  return {
+    km: data.routes[0].distance / 1000,
+    min: Math.round(data.routes[0].duration / 60)
+  };
 }
 function minutesEstimate(km){ return Math.max(1, Math.round((km/55)*60)); }
 
@@ -116,7 +123,14 @@ async function searchNearest(){
   try { pos = await geocodePlz(plz); } catch(e){ $('result').textContent=e.message; return; }
   const withGeo = people.filter(p=>p.lat && p.lon);
   if(!withGeo.length){ $('result').textContent='Keine Vertriebler mit Koordinaten gespeichert.'; return; }
-  const ranked = withGeo.map(p=>({p, km: distanceKm(pos,{lat:p.lat,lon:p.lon})})).sort((a,b)=>a.km-b.km);
+const ranked = [];
+
+for (const p of withGeo) {
+  const route = await routeInfo(pos, { lat: p.lat, lon: p.lon });
+  ranked.push({ p, km: route.km, min: route.min });
+}
+
+const min = item.min;
  const top5 = ranked.slice(0, 5);
 
 $('result').innerHTML =
