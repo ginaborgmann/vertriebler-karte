@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Routenplaner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Routenplaner</h1>
+      <p>2 bis 5 Punkte: PLZ oder Vertriebler auswählen.</p>
+    </div>
+    <nav>
+      <a href="index.html">Vertriebler-Karte</a>
+      <a href="route.html">Routenplaner</a>
+    </nav>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Route berechnen</h2>
+      <div id="status" class="status">Lade Vertriebler...</div>
+
+      <div id="routePoints"></div>
+
+      <div class="actions">
+        <button id="addPointBtn">+ Punkt hinzufügen</button>
+        <button id="calcRouteBtn">Route berechnen</button>
+      </div>
+
+      <div id="routeResult" class="result"></div>
+    </section>
+
+    <section class="card map-card">
+      <div id="map"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="config.js?v=4"></script>
+  <script src="route.js?v=4"></script>
+</body>
+</html>
