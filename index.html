@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vertriebler-Karte</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Vertriebler-Karte</h1>
+    <p>Name + PLZ einfügen, speichern, PLZ suchen.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>PLZ suchen</h2>
+      <div class="row">
+        <input id="searchPlz" placeholder="z. B. 48143" maxlength="5">
+        <button id="searchBtn">Nächsten Vertriebler suchen</button>
+      </div>
+      <div id="result" class="result">Noch keine Suche.</div>
+    </section>
+
+    <section class="card">
+      <h2>Vertriebler importieren</h2>
+      <p>Kopiere aus Excel/Sheets einfach zwei Spalten: <b>Name</b> und <b>PLZ</b>.</p>
+      <textarea id="bulkInput" rows="7" placeholder="Max Mustermann    48143&#10;Anna Müller    50667"></textarea>
+      <div class="row">
+        <button id="saveBtn">Alle speichern</button>
+        <button id="reloadBtn" class="secondary">Neu laden</button>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="grid">
+      <div id="map"></div>
+      <div class="card listcard">
+        <h2>Gespeicherte Vertriebler</h2>
+        <div id="list">Lade...</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
