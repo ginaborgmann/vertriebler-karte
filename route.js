@@ -1,195 +1,242 @@
 let db;
 let map;
-let routeMarkers = [];
-let routeLine = null;
+let routeLayer;
+let pointMarkers = [];
 let people = [];
-let pointCount = 2;
+let pointCount = 2; // Start + Ziel 1
+const MAX_POINTS = 6; // Start + maximal 5 Ziele
 
 const $ = (id) => document.getElementById(id);
 
-function fail(msg){
-  $('status').textContent = msg;
-  $('status').style.background = '#fee2e2';
-}
-function ok(msg){
-  $('status').textContent = msg;
-  $('status').style.background = '#dcfce7';
+function setStatus(msg, type = 'ok') {
+  const el = $('status');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#fee2e2' : '#dcfce7';
 }
 
-function initSupabase(){
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function initSupabase() {
   if (!window.SUPABASE_URL || !window.SUPABASE_PUBLISHABLE_KEY || window.SUPABASE_PUBLISHABLE_KEY.includes('HIER_')) {
-    fail('Bitte in config.js die SUPABASE_URL und den SUPABASE_PUBLISHABLE_KEY eintragen.');
+    setStatus('Bitte zuerst config.js mit Supabase URL und Publishable Key prüfen.', 'error');
     return false;
   }
   db = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
   return true;
 }
 
-function initMap(){
-  map = L.map('map').setView([51.1657, 10.4515], 6);
+function initMap() {
+  map = L.map('routeMap').setView([51.1657, 10.4515], 6);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 }
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-}
-
-async function loadPeople(){
-  const {data, error} = await db.from('vertriebler').select('*').order('name');
-  if (error){ fail('Fehler beim Laden: ' + error.message); return; }
+async function loadPeople() {
+  const { data, error } = await db.from('vertriebler').select('*').order('name');
+  if (error) {
+    setStatus('Vertriebler konnten nicht geladen werden: ' + error.message, 'error');
+    return;
+  }
   people = data || [];
-  ok(`${people.length} Vertriebler geladen.`);
   renderPoints();
 }
 
-function renderPoints(){
-  const options = people.map(p => `<option value="${p.id}">${escapeHtml(p.name)} - ${escapeHtml(p.plz)}</option>`).join('');
-  let html = '';
-
-  for (let i = 0; i < pointCount; i++) {
-    const label = i === 0 ? 'Start' : `Ziel ${i}`;
-    html += `
-      <div class="route-point">
-        <h3>${label}</h3>
-        <label>Art</label>
-        <select id="type_${i}" onchange="togglePointType(${i})">
-          <option value="plz">PLZ eingeben</option>
-          <option value="person">Vertriebler auswählen</option>
-        </select>
-
-        <input id="plz_${i}" placeholder="PLZ, z. B. 49074" maxlength="5" />
-
-        <select id="person_${i}" style="display:none">
-          <option value="">Vertriebler wählen...</option>
-          ${options}
-        </select>
-      </div>
-    `;
-  }
-
-  $('routePoints').innerHTML = html;
-  $('addPointBtn').disabled = pointCount >= 5;
+function personOptions() {
+  return people
+    .filter(p => p.lat && p.lon)
+    .map(p => `<option value="${p.id}">${escapeHtml(p.name)} (${escapeHtml(p.plz)})</option>`)
+    .join('');
 }
 
-window.togglePointType = function(i){
-  const type = $(`type_${i}`).value;
-  $(`plz_${i}`).style.display = type === 'plz' ? 'block' : 'none';
-  $(`person_${i}`).style.display = type === 'person' ? 'block' : 'none';
+function renderPoints() {
+  const wrap = $('points');
+  const oldValues = readCurrentPointValues(false);
+  wrap.innerHTML = '';
+
+  for (let i = 0; i < pointCount; i++) {
+    const isStart = i === 0;
+    const old = oldValues[i] || { mode: 'plz', plz: '', personId: '' };
+    const title = isStart ? 'Start' : `Ziel ${i}`;
+    const removeButton = !isStart && pointCount > 2
+      ? `<button type="button" class="danger" onclick="removePoint(${i})">Entfernen</button>`
+      : '';
+
+    wrap.insertAdjacentHTML('beforeend', `
+      <div class="point" data-index="${i}">
+        <div class="point-head"><strong>${title}</strong>${removeButton}</div>
+        <div class="row">
+          <label>Art</label>
+          <select class="mode" onchange="togglePointMode(${i})">
+            <option value="plz" ${old.mode === 'plz' ? 'selected' : ''}>PLZ eingeben</option>
+            <option value="person" ${old.mode === 'person' ? 'selected' : ''}>Vertriebler auswählen</option>
+          </select>
+        </div>
+        <div class="row plz-row">
+          <label>PLZ</label>
+          <input class="plz" inputmode="numeric" maxlength="5" placeholder="z. B. 49074" value="${escapeHtml(old.plz)}" />
+        </div>
+        <div class="row person-row">
+          <label>Vertriebler</label>
+          <select class="personId">
+            <option value="">Bitte auswählen</option>
+            ${personOptions()}
+          </select>
+        </div>
+      </div>
+    `);
+
+    const point = wrap.querySelector(`.point[data-index="${i}"]`);
+    point.querySelector('.personId').value = old.personId || '';
+    togglePointMode(i);
+  }
+
+  $('addPointBtn').disabled = pointCount >= MAX_POINTS;
+}
+
+function readCurrentPointValues(throwErrors = true) {
+  const values = [];
+  document.querySelectorAll('.point').forEach((el, i) => {
+    const mode = el.querySelector('.mode').value;
+    const plz = el.querySelector('.plz').value.trim();
+    const personId = el.querySelector('.personId').value;
+    values[i] = { mode, plz, personId };
+  });
+  return values;
+}
+
+window.togglePointMode = function(index) {
+  const el = document.querySelector(`.point[data-index="${index}"]`);
+  if (!el) return;
+  const mode = el.querySelector('.mode').value;
+  el.querySelector('.plz-row').style.display = mode === 'plz' ? '' : 'none';
+  el.querySelector('.person-row').style.display = mode === 'person' ? '' : 'none';
 };
 
-function addPoint(){
-  if (pointCount >= 5) return;
+window.removePoint = function(index) {
+  const values = readCurrentPointValues(false);
+  values.splice(index, 1);
+  pointCount = Math.max(2, pointCount - 1);
+  renderPoints();
+  setTimeout(() => {
+    document.querySelectorAll('.point').forEach((el, i) => {
+      if (!values[i]) return;
+      el.querySelector('.mode').value = values[i].mode;
+      el.querySelector('.plz').value = values[i].plz;
+      el.querySelector('.personId').value = values[i].personId;
+      togglePointMode(i);
+    });
+  }, 0);
+};
+
+function addPoint() {
+  if (pointCount >= MAX_POINTS) {
+    setStatus('Maximal 5 Ziele möglich.', 'error');
+    return;
+  }
   pointCount++;
   renderPoints();
 }
 
-async function geocodePlz(plz){
+async function geocodePlz(plz) {
+  if (!/^\d{5}$/.test(plz)) throw new Error('Ungültige PLZ: ' + plz);
   const key = 'geo_' + plz;
   const cached = localStorage.getItem(key);
   if (cached) return JSON.parse(cached);
 
   const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=de&postalcode=${encodeURIComponent(plz)}&limit=1`;
-  const res = await fetch(url, {headers: {'Accept': 'application/json'}});
+  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
   const data = await res.json();
   if (!data || !data.length) throw new Error('PLZ nicht gefunden: ' + plz);
 
-  const pos = {lat: Number(data[0].lat), lon: Number(data[0].lon), label: plz};
+  const pos = { label: 'PLZ ' + plz, lat: Number(data[0].lat), lon: Number(data[0].lon) };
   localStorage.setItem(key, JSON.stringify(pos));
   await new Promise(r => setTimeout(r, 1100));
   return pos;
 }
 
-function distanceKm(a,b){
-  const R=6371;
-  const dLat=(b.lat-a.lat)*Math.PI/180;
-  const dLon=(b.lon-a.lon)*Math.PI/180;
-  const lat1=a.lat*Math.PI/180;
-  const lat2=b.lat*Math.PI/180;
-  const x=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-}
-
-function minutesEstimate(km){
-  return Math.max(1, Math.round((km / 55) * 60));
-}
-
-async function getPoint(i){
-  const type = $(`type_${i}`).value;
-
-  if (type === 'person') {
-    const id = Number($(`person_${i}`).value);
-    const p = people.find(x => x.id === id);
-    if (!p) throw new Error(`Bitte bei Punkt ${i + 1} einen Vertriebler auswählen.`);
-    if (!p.lat || !p.lon) throw new Error(`${p.name} hat keine Koordinaten. Bitte Vertriebler neu mit PLZ speichern.`);
-    return {lat: p.lat, lon: p.lon, label: p.name + ' (' + p.plz + ')'};
+async function resolvePoint(input, index) {
+  if (input.mode === 'person') {
+    const p = people.find(x => String(x.id) === String(input.personId));
+    if (!p) throw new Error(`Punkt ${index + 1}: Vertriebler auswählen.`);
+    if (!p.lat || !p.lon) throw new Error(`${p.name} hat keine Koordinaten gespeichert.`);
+    return { label: p.name + ' (' + p.plz + ')', lat: Number(p.lat), lon: Number(p.lon) };
   }
-
-  const plz = $(`plz_${i}`).value.trim();
-  if (!/^\d{5}$/.test(plz)) throw new Error(`Bitte bei Punkt ${i + 1} eine 5-stellige PLZ eingeben.`);
-  const pos = await geocodePlz(plz);
-  return {...pos, label: 'PLZ ' + plz};
+  return await geocodePlz(input.plz);
 }
 
-function clearMap(){
-  routeMarkers.forEach(m => m.remove());
-  routeMarkers = [];
-  if (routeLine) routeLine.remove();
-  routeLine = null;
-}
-
-async function calculateRoute(){
+async function calculateRoute() {
   try {
-    ok('Route wird berechnet...');
+    setStatus('Route wird berechnet...');
+    const inputs = readCurrentPointValues();
+    if (inputs.length < 2) throw new Error('Bitte mindestens Start und ein Ziel eintragen.');
+
     const points = [];
-
-    for (let i = 0; i < pointCount; i++) {
-      points.push(await getPoint(i));
+    for (let i = 0; i < inputs.length; i++) {
+      points.push(await resolvePoint(inputs[i], i));
     }
 
-    let totalKm = 0;
-    let totalMin = 0;
-    let rows = '';
+    const coords = points.map(p => `${p.lon},${p.lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-    for (let i = 0; i < points.length - 1; i++) {
-      const km = Math.round(distanceKm(points[i], points[i+1]) * 10) / 10;
-      const min = minutesEstimate(km);
-      totalKm += km;
-      totalMin += min;
-      rows += `<div class="route-leg"><b>${escapeHtml(points[i].label)}</b> → <b>${escapeHtml(points[i+1].label)}</b><br>${km} km | ca. ${min} Min.</div>`;
+    if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
+      throw new Error('Route konnte nicht berechnet werden.');
     }
 
-    const backKm = Math.round(distanceKm(points[points.length - 1], points[0]) * 10) / 10;
-    const backMin = minutesEstimate(backKm);
-    totalKm += backKm;
-    totalMin += backMin;
-    rows += `<div class="route-leg"><b>Zurück:</b> ${escapeHtml(points[points.length - 1].label)} → ${escapeHtml(points[0].label)}<br>${backKm} km | ca. ${backMin} Min.</div>`;
-
-    $('routeResult').innerHTML = rows + `<hr><h3>Gesamt: ${Math.round(totalKm * 10) / 10} km | ca. ${totalMin} Min.</h3>`;
-
-    clearMap();
-    const latlngs = points.map(p => [p.lat, p.lon]);
-    latlngs.push([points[0].lat, points[0].lon]);
-    routeLine = L.polyline(latlngs, {weight: 4}).addTo(map);
-
-    points.forEach((p, i) => {
-      const m = L.marker([p.lat, p.lon]).addTo(map).bindPopup(`${i === 0 ? 'Start' : 'Ziel ' + i}: ${escapeHtml(p.label)}`);
-      routeMarkers.push(m);
-    });
-
-    map.fitBounds(routeLine.getBounds(), {padding:[30,30]});
-    ok('Route berechnet. Fahrzeit ist geschätzt.');
-  } catch (e) {
-    fail(e.message);
+    const route = data.routes[0];
+    renderRoute(points, route);
+    setStatus('Route berechnet.');
+  } catch (err) {
+    setStatus(err.message, 'error');
   }
+}
+
+function formatMinutes(seconds) {
+  const min = Math.round(seconds / 60);
+  if (min < 60) return `${min} Min.`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h} Std. ${m} Min.`;
+}
+
+function renderRoute(points, route) {
+  if (routeLayer) routeLayer.remove();
+  pointMarkers.forEach(m => m.remove());
+  pointMarkers = [];
+
+  routeLayer = L.geoJSON(route.geometry, { weight: 5 }).addTo(map);
+
+  points.forEach((p, i) => {
+    const label = i === 0 ? 'Start' : `Ziel ${i}`;
+    const marker = L.marker([p.lat, p.lon]).addTo(map).bindPopup(`<b>${label}</b><br>${escapeHtml(p.label)}`);
+    pointMarkers.push(marker);
+  });
+
+  map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+
+  const legs = route.legs || [];
+  let totalDistance = 0;
+  let totalDuration = 0;
+
+  const html = legs.map((leg, i) => {
+    totalDistance += leg.distance;
+    totalDuration += leg.duration;
+    const km = (leg.distance / 1000).toFixed(1).replace('.', ',');
+    return `<div class="result-line"><b>${escapeHtml(points[i].label)}</b> → <b>${escapeHtml(points[i+1].label)}</b><br>${km} km | ${formatMinutes(leg.duration)}</div>`;
+  }).join('');
+
+  $('routeResult').innerHTML = html + `<div class="total">Gesamt: ${(totalDistance / 1000).toFixed(1).replace('.', ',')} km | ${formatMinutes(totalDuration)}</div>`;
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
   initMap();
   if (!initSupabase()) return;
   $('addPointBtn').addEventListener('click', addPoint);
-  $('calcRouteBtn').addEventListener('click', calculateRoute);
+  $('calcBtn').addEventListener('click', calculateRoute);
   await loadPeople();
 });

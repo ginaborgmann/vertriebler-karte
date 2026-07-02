@@ -4,44 +4,61 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Routenplaner</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .route-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+    .route-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 8px 22px rgba(0,0,0,.06)}
+    .point{border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin:10px 0;background:#f9fafb}
+    .point-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+    .row{display:grid;grid-template-columns:150px 1fr;gap:8px;margin:8px 0;align-items:center}
+    .row input,.row select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button,.button{padding:10px 14px;border:0;border-radius:10px;background:#111827;color:#fff;cursor:pointer;text-decoration:none;display:inline-block}
+    button.secondary,.button.secondary{background:#e5e7eb;color:#111827}
+    button.danger{background:#dc2626}
+    #routeMap{height:520px;border-radius:14px;border:1px solid #e5e7eb}
+    .result-line{padding:10px;border-bottom:1px solid #e5e7eb}
+    .total{font-weight:700;font-size:1.1rem;padding:12px;background:#ecfdf5;border-radius:12px;margin-top:10px}
+    @media(max-width:900px){.route-grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}#routeMap{height:420px}}
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <div>
-      <h1>Routenplaner</h1>
-      <p>2 bis 5 Punkte: PLZ oder Vertriebler auswählen.</p>
-    </div>
-    <nav>
-      <a href="index.html">Vertriebler-Karte</a>
-      <a href="route.html">Routenplaner</a>
-    </nav>
-  </header>
+  <main class="container">
+    <header>
+      <h1>🗺️ Routenplaner</h1>
+      <p><a href="index.html">← Zur Vertriebler-Karte</a></p>
+    </header>
 
-  <main class="grid">
-    <section class="card">
-      <h2>Route berechnen</h2>
-      <div id="status" class="status">Lade Vertriebler...</div>
+    <div id="status" class="status">Bereit.</div>
 
-      <div id="routePoints"></div>
+    <section class="route-grid">
+      <div class="route-card">
+        <h2>Route eingeben</h2>
+        <p>Start und Ziele können entweder eine PLZ oder ein gespeicherter Vertriebler sein. Berechnet wird nur die Fahrstrecke – kein Rückweg.</p>
 
-      <div class="actions">
-        <button id="addPointBtn">+ Punkt hinzufügen</button>
-        <button id="calcRouteBtn">Route berechnen</button>
+        <div id="points"></div>
+
+        <div class="btns">
+          <button id="addPointBtn" type="button" class="secondary">+ Ziel hinzufügen</button>
+          <button id="calcBtn" type="button">Route berechnen</button>
+        </div>
       </div>
 
-      <div id="routeResult" class="result"></div>
+      <div class="route-card">
+        <h2>Ergebnis</h2>
+        <div id="routeResult">Noch keine Route berechnet.</div>
+      </div>
     </section>
 
-    <section class="card map-card">
-      <div id="map"></div>
+    <section class="route-card" style="margin-top:16px">
+      <div id="routeMap"></div>
     </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="config.js?v=4"></script>
-  <script src="route.js?v=4"></script>
+  <script src="config.js?v=50"></script>
+  <script src="route.js?v=1"></script>
 </body>
 </html>
