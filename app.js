@@ -137,7 +137,7 @@ $('result').innerHTML =
   `<b>Die nächsten Vertriebler:</b><br>` +
   top5.map((item, index) => {
     const km = Math.round(item.km * 10) / 10;
-    const min = minutesEstimate(km);
+    const min = item.min;
     return `${index + 1}. <b>${escapeHtml(item.p.name)}</b> – PLZ ${escapeHtml(item.p.plz)} – <b>${km} km</b> – ca. <b>${min} Min.</b>`;
   }).join('<br>');
 
