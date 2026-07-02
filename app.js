@@ -130,7 +130,7 @@ for (const p of withGeo) {
   ranked.push({ p, km: route.km, min: route.min });
 }
 
-const min = item.min;
+const min = best.min;
  const top5 = ranked.slice(0, 5);
 
 $('result').innerHTML =
