@@ -130,18 +130,18 @@ for (const p of withGeo) {
   ranked.push({ p, km: route.km, min: route.min });
 }
 
-const min = best.min;
- const top5 = ranked.slice(0, 5);
+ranked.sort((a, b) => a.km - b.km);
+
+const top5 = ranked.slice(0, 5);
+const best = top5[0];
 
 $('result').innerHTML =
-  `<b>Die nächsten Vertriebler:</b><br>` +
+  '<b>Die nächsten Vertriebler:</b><br>' +
   top5.map((item, index) => {
     const km = Math.round(item.km * 10) / 10;
     const min = item.min;
-    return `${index + 1}. <b>${escapeHtml(item.p.name)}</b> – PLZ ${escapeHtml(item.p.plz)} – <b>${km} km</b> – ca. <b>${min} Min.</b>`;
+    return `${index + 1}. <b>${escapeHtml(item.p.name)}</b> - PLZ ${escapeHtml(item.p.plz)} - <b>${km} km</b> - ca. <b>${min} Min</b>`;
   }).join('<br>');
-
-const best = top5[0];
   L.marker([pos.lat,pos.lon]).addTo(map).bindPopup('Gesuchte PLZ '+plz).openPopup();
   map.setView([best.p.lat,best.p.lon], 10);
   renderMarkers(best.p.id);
